@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>大专生获胜倒计时</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @keyframes flicker {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.92; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes scanline {
+    0%   { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+
+  body {
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: flicker 0.15s infinite alternate;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* CRT scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.03) 2px,
+      rgba(0, 255, 65, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* CRT vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 998;
+  }
+
+  .container {
+    max-width: 780px;
+    width: 90%;
+    padding: 30px 35px;
+    border: 2px solid #00ff41;
+    box-shadow:
+      0 0 15px #00ff41,
+      0 0 30px #00ff41,
+      inset 0 0 15px rgba(0,255,65,0.1);
+    background: rgba(0, 0, 0, 0.85);
+    position: relative;
+    z-index: 1;
+  }
+
+  .glitch-title {
+    font-size: 2.2em;
+    font-weight: bold;
+    text-align: center;
+    color: #00ff41;
+    text-shadow:
+      2px 0 #ff00ff,
+      -2px 0 #00ffff,
+      0 0 20px #00ff41;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+    word-break: break-word;
+    position: relative;
+  }
+
+  .glitch-title::before,
+  .glitch-title::after {
+    content: '大专生获胜倒计时';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.3;
+  }
+
+  .glitch-title::before {
+    color: #ff00ff;
+    clip-path: inset(0 0 60% 0);
+    transform: translate(-3px, -2px);
+    animation: glitch-drift 3s infinite alternate;
+  }
+
+  .glitch-title::after {
+    color: #00ffff;
+    clip-path: inset(60% 0 0 0);
+    transform: translate(3px, 2px);
+    animation: glitch-drift 2.7s infinite alternate-reverse;
+  }
+
+  @keyframes glitch-drift {
+    0%   { transform: translate(-2px, -1px); }
+    20%  { transform: translate(3px, 1px); }
+    40%  { transform: translate(-4px, 2px); }
+    60%  { transform: translate(1px, -1px); }
+    80%  { transform: translate(-1px, 3px); }
+    100% { transform: translate(2px, -2px); }
+  }
+
+  .countdown-box {
+    text-align: center;
+    padding: 25px 15px;
+    border: 1px solid #00ff41;
+    background: rgba(0, 255, 65, 0.03);
+    margin-bottom: 30px;
+    position: relative;
+  }
+
+  .countdown-box::before {
+    content: '> SYSTEM TIME REMAINING';
+    position: absolute;
+    top: -10px; left: 15px;
+    background: #0a0a0a;
+    padding: 0 8px;
+    font-size: 0.7em;
+    color: #00cc33;
+    letter-spacing: 2px;
+  }
+
+  .countdown-number {
+    font-size: 3.5em;
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow: 0 0 25px #00ff41;
+    line-height: 1.2;
+  }
+
+  .countdown-labels {
+    display: flex;
+    justify-content: center;
+    gap: 25px;
+    margin-top: 8px;
+    font-size: 0.85em;
+    color: #00aa33;
+    letter-spacing: 2px;
+  }
+
+  .countdown-labels span {
+    min-width: 70px;
+  }
+
+  .separator {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+    margin: 20px 0;
+    box-shadow: 0 0 8px #00ff41;
+  }
+
+  .expense-section {
+    margin-top: 5px;
+  }
+
+  .expense-label {
+    color: #00cc33;
+    font-size: 0.95em;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+
+  .expense-label::before {
+    content: '> ';
+    color: #00ff41;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .input-row input {
+    background: #0a0a0a;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 1.1em;
+    padding: 10px 14px;
+    width: 160px;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0,255,65,0.3);
+    transition: box-shadow 0.2s;
+  }
+
+  .input-row input:focus {
+    box-shadow: 0 0 15px #00ff41;
+  }
+
+  .input-row button {
+    background: transparent;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 1em;
+    padding: 10px 22px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    transition: all 0.15s;
+    box-shadow: 0 0 5px rgba(0,255,65,0.2);
+  }
+
+  .input-row button:hover {
+    background: #00ff41;
+    color: #0a0a0a;
+    box-shadow: 0 0 25px #00ff41;
+  }
+
+  .input-row button:active {
+    transform: scale(0.96);
+  }
+
+  .status-msg {
+    margin-top: 8px;
+    font-size: 0.8em;
+    color: #00aa33;
+    min-height: 1.2em;
+    animation: blink 1s step-end infinite;
+  }
+
+  .history-title {
+    margin-top: 25px;
+    color: #00cc33;
+    font-size: 0.9em;
+    letter-spacing: 1px;
+    padding-bottom: 5px;
+    border-bottom: 1px dashed #00ff41;
+  }
+
+  .history-title::before {
+    content: '> ';
+  }
+
+  .history-list {
+    list-style: none;
+    margin-top: 10px;
+    min-height: 40px;
+  }
+
+  .history-list li {
+    padding: 7px 10px;
+    border-left: 2px solid #00ff41;
+    margin-bottom: 5px;
+    font-size: 0.9em;
+    color: #00dd44;
+    background: rgba(0, 255, 65, 0.02);
+    display: flex;
+    justify-content: space-between;
+    transition: background 0.2s;
+  }
+
+  .history-list li:hover {
+    background: rgba(0, 255, 65, 0.08);
+  }
+
+  .history-list li .cost {
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow: 0 0 8px #00ff41;
+  }
+
+  .history-list li .time {
+    color: #006622;
+    font-size: 0.8em;
+  }
+
+  .history-empty {
+    color: #006622;
+    font-size: 0.85em;
+    font-style: italic;
+  }
+
+  .history-empty::before {
+    content: '// ';
+    color: #004d1a;
+  }
+
+  .cursor-blink {
+    animation: blink 1s step-end infinite;
+  }
+
+  /* footer作为终端prompt */
+  .terminal-line {
+    margin-top: 25px;
+    font-size: 0.75em;
+    color: #006622;
+    letter-spacing: 1px;
+  }
+
+  .terminal-line::before {
+    content: 'root@dazhuan-sheng:~$ ';
+    color: #00cc33;
+  }
+
+  @media (max-width: 500px) {
+    .container { padding: 20px 15px; }
+    .glitch-title { font-size: 1.4em; letter-spacing: 3px; }
+    .countdown-number { font-size: 2.2em; }
+    .countdown-labels { gap: 10px; font-size: 0.7em; }
+    .countdown-labels span { min-width: 50px; }
+    .input-row input { width: 120px; font-size: 0.95em; }
+    .input-row button { padding: 10px 14px; font-size: 0.85em; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="glitch-title">大专生获胜倒计时</div>
+
+  <div class="countdown-box">
+    <div class="countdown-number" id="countdownDisplay">--:--:--</div>
+    <div class="countdown-labels">
+      <span>天</span>
+      <span>时</span>
+      <span>分</span>
+      <span>秒</span>
+    </div>
+  </div>
+
+  <hr class="separator">
+
+  <div class="expense-section">
+    <div class="expense-label">今天花了多少钱？</div>
+
+    <div class="input-row">
+      <span style="color:#00aa33;">¥</span>
+      <input type="number" id="expenseInput" step="0.01" min="0" placeholder="0.00" autocomplete="off">
+      <button id="saveBtn">[ 保存 ]</button>
+    </div>
+
+    <div class="status-msg" id="statusMsg"></div>
+
+    <div class="history-title">RECENT 5 EXPENSES</div>
+    <ul class="history-list" id="historyList">
+      <li class="history-empty">暂无记录</li>
+    </ul>
+  </div>
+
+  <div class="terminal-line">_<span class="cursor-blink">▌</span></div>
+</div>
+
+<script>
+(function() {
+  const TARGET = new Date('2026-10-01T00:00:00');
+  const STORAGE_KEY = 'dazhuan_expenses';
+
+  const countdownEl = document.getElementById('countdownDisplay');
+  const expenseInput = document.getElementById('expenseInput');
+  const saveBtn = document.getElementById('saveBtn');
+  const statusMsg = document.getElementById('statusMsg');
+  const historyList = document.getElementById('historyList');
+
+  // ---------- 倒计时 ----------
+  function updateCountdown() {
+    const now = new Date();
+    const diff = TARGET - now;
+
+    if (diff <= 0) {
+      countdownEl.textContent = '00:00:00:00';
+      document.querySelector('.countdown-box').style.borderColor = '#ff0044';
+      document.querySelector('.countdown-box').style.boxShadow = '0 0 30px #ff0044';
+      return;
+    }
+
+    const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    countdownEl.textContent =
+      String(days).padStart(2, '0') + ':' +
+      String(hours).padStart(2, '0') + ':' +
+      String(minutes).padStart(2, '0') + ':' +
+      String(seconds).padStart(2, '0');
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+
+  // ---------- 花费记录 ----------
+  function getExpenses() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveExpenses(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function addExpense(amount) {
+    const list = getExpenses();
+    list.push({
+      amount: parseFloat(amount),
+      time: Date.now()
+    });
+    saveExpenses(list);
+  }
+
+  function formatTime(ts) {
+    const d = new Date(ts);
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return month + '/' + day + ' ' + hh + ':' + mm;
+  }
+
+  function renderHistory() {
+    const list = getExpenses();
+    const recent = list.slice(-5).reverse();
+
+    historyList.innerHTML = '';
+
+    if (recent.length === 0) {
+      const li = document.createElement('li');
+      li.className = 'history-empty';
+      li.textContent = '暂无记录';
+      historyList.appendChild(li);
+      return;
+    }
+
+    recent.forEach(function(item) {
+      const li = document.createElement('li');
+
+      const costSpan = document.createElement('span');
+      costSpan.className = 'cost';
+      costSpan.textContent = '¥ ' + item.amount.toFixed(2);
+
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'time';
+      timeSpan.textContent = formatTime(item.time);
+
+      li.appendChild(costSpan);
+      li.appendChild(timeSpan);
+      historyList.appendChild(li);
+    });
+  }
+
+  // ---------- 保存事件 ----------
+  saveBtn.addEventListener('click', function() {
+    const raw = expenseInput.value.trim();
+    if (raw === '') {
+      statusMsg.textContent = '> ERROR: 请输入金额';
+      return;
+    }
+
+    const num = parseFloat(raw);
+    if (isNaN(num) || num < 0) {
+      statusMsg.textContent = '> ERROR: 金额无效（必须 ≥ 0）';
+      return;
+    }
+
+    addExpense(num);
+    renderHistory();
+    expenseInput.value = '';
+    statusMsg.textContent = '> OK: ¥ ' + num.toFixed(2) + ' 已保存';
+  });
+
+  // 回车也保存
+  expenseInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      saveBtn.click();
+    }
+  });
+
+  // 初始渲染
+  renderHistory();
+})();
+</script>
+</body>
+</html>
