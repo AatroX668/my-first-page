@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>待办清单 // TODO</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @keyframes flicker {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.92; }
+    100% { opacity: 1; }
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0; }
+  }
+
+  body {
+    background: #0a0a0a;
+    color: #00ff41;
+    font-family: 'Courier New', 'Courier', 'Lucida Console', monospace;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 50px 20px;
+    animation: flicker 0.15s infinite alternate;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* CRT scanline */
+  body::after {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 65, 0.03) 2px,
+      rgba(0, 255, 65, 0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  /* vignette */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,0.6) 100%);
+    pointer-events: none;
+    z-index: 998;
+  }
+
+  .container {
+    max-width: 650px;
+    width: 100%;
+    padding: 30px 35px;
+    border: 2px solid #00ff41;
+    box-shadow:
+      0 0 15px #00ff41,
+      0 0 30px #00ff41,
+      inset 0 0 15px rgba(0,255,65,0.1);
+    background: rgba(0, 0, 0, 0.85);
+    position: relative;
+    z-index: 1;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 25px;
+    position: relative;
+  }
+
+  .glitch-title {
+    font-size: 2em;
+    font-weight: bold;
+    color: #00ff41;
+    text-shadow:
+      2px 0 #ff00ff,
+      -2px 0 #00ffff,
+      0 0 20px #00ff41;
+    letter-spacing: 5px;
+    text-transform: uppercase;
+    position: relative;
+    display: inline-block;
+  }
+
+  .glitch-title::before,
+  .glitch-title::after {
+    content: '// TODO.LIST';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.3;
+  }
+
+  .glitch-title::before {
+    color: #ff00ff;
+    clip-path: inset(0 0 60% 0);
+    transform: translate(-3px, -2px);
+    animation: glitch-drift 3s infinite alternate;
+  }
+
+  .glitch-title::after {
+    color: #00ffff;
+    clip-path: inset(60% 0 0 0);
+    transform: translate(3px, 2px);
+    animation: glitch-drift 2.7s infinite alternate-reverse;
+  }
+
+  @keyframes glitch-drift {
+    0%   { transform: translate(-2px, -1px); }
+    20%  { transform: translate(3px, 1px); }
+    40%  { transform: translate(-4px, 2px); }
+    60%  { transform: translate(1px, -1px); }
+    80%  { transform: translate(-1px, 3px); }
+    100% { transform: translate(2px, -2px); }
+  }
+
+  .stats {
+    margin-top: 8px;
+    font-size: 0.75em;
+    color: #006622;
+    letter-spacing: 2px;
+  }
+
+  .input-area {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #003311;
+    padding: 15px;
+    background: rgba(0, 255, 65, 0.02);
+  }
+
+  .input-area input {
+    flex: 1;
+    background: #0a0a0a;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 1em;
+    padding: 10px 14px;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0,255,65,0.3);
+    transition: box-shadow 0.2s;
+    min-width: 0;
+  }
+
+  .input-area input:focus {
+    box-shadow: 0 0 15px #00ff41;
+  }
+
+  .input-area input::placeholder {
+    color: #004d1a;
+  }
+
+  .input-area button {
+    background: transparent;
+    border: 1px solid #00ff41;
+    color: #00ff41;
+    font-family: 'Courier New', monospace;
+    font-size: 1em;
+    padding: 10px 20px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    transition: all 0.15s;
+    box-shadow: 0 0 5px rgba(0,255,65,0.2);
+    white-space: nowrap;
+  }
+
+  .input-area button:hover {
+    background: #00ff41;
+    color: #0a0a0a;
+    box-shadow: 0 0 25px #00ff41;
+  }
+
+  .input-area button:active {
+    transform: scale(0.96);
+  }
+
+  .separator {
+    border: none;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+    margin: 5px 0 15px 0;
+    box-shadow: 0 0 8px #00ff41;
+  }
+
+  .todo-count {
+    font-size: 0.8em;
+    color: #00aa33;
+    margin-bottom: 10px;
+    letter-spacing: 1px;
+  }
+
+  .todo-count::before {
+    content: '> STATUS: ';
+    color: #00cc33;
+  }
+
+  .todo-list {
+    list-style: none;
+    min-height: 60px;
+  }
+
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-left: 2px solid #00ff41;
+    margin-bottom: 6px;
+    background: rgba(0, 255, 65, 0.02);
+    transition: all 0.2s;
+    animation: fade-in 0.2s ease-out;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  .todo-item:hover {
+    background: rgba(0, 255, 65, 0.07);
+  }
+
+  .todo-item.completed {
+    border-left-color: #006622;
+    opacity: 0.55;
+  }
+
+  .todo-item.completed .todo-text {
+    text-decoration: line-through;
+    color: #006622;
+  }
+
+  .todo-check {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #00ff41;
+    background: transparent;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    transition: all 0.15s;
+  }
+
+  .todo-check:hover {
+    box-shadow: 0 0 10px #00ff41;
+  }
+
+  .todo-check:checked {
+    background: #00ff41;
+    border-color: #00ff41;
+  }
+
+  .todo-check:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #0a0a0a;
+    font-size: 14px;
+    font-weight: bold;
+  }
+
+  .todo-text {
+    flex: 1;
+    font-size: 0.95em;
+    word-break: break-word;
+    letter-spacing: 0.5px;
+  }
+
+  .todo-delete {
+    background: transparent;
+    border: 1px solid #004d1a;
+    color: #004d1a;
+    font-family: 'Courier New', monospace;
+    font-size: 0.8em;
+    padding: 4px 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    flex-shrink: 0;
+    letter-spacing: 1px;
+  }
+
+  .todo-delete:hover {
+    border-color: #ff0044;
+    color: #ff0044;
+    box-shadow: 0 0 15px #ff0044;
+  }
+
+  .empty-msg {
+    color: #004d1a;
+    font-size: 0.85em;
+    font-style: italic;
+    padding: 20px 0;
+    text-align: center;
+  }
+
+  .empty-msg::before {
+    content: '// ';
+  }
+
+  .status-msg {
+    margin-top: 12px;
+    font-size: 0.78em;
+    color: #006622;
+    min-height: 1.2em;
+  }
+
+  .footer-line {
+    margin-top: 20px;
+    font-size: 0.7em;
+    color: #004d1a;
+    letter-spacing: 1px;
+  }
+
+  .footer-line::before {
+    content: 'root@todo:~$ ';
+    color: #006622;
+  }
+
+  .cursor {
+    animation: blink 1s step-end infinite;
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: 20px 15px; }
+    .glitch-title { font-size: 1.4em; letter-spacing: 3px; }
+    .input-area { flex-direction: column; }
+    .input-area button { width: 100%; }
+    .todo-item { flex-wrap: wrap; }
+    .todo-delete { margin-left: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <div class="header">
+    <div class="glitch-title">// TODO.LIST</div>
+    <div class="stats" id="statsDisplay">[ 0 / 0 ]</div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="todoInput" placeholder="输入新任务..." autocomplete="off">
+    <button id="addBtn">[ 添加 ]</button>
+  </div>
+
+  <hr class="separator">
+
+  <div class="todo-count" id="todoCount">待办项: 0</div>
+
+  <ul class="todo-list" id="todoList">
+    <li class="empty-msg">还没有待办，添加一条吧</li>
+  </ul>
+
+  <div class="status-msg" id="statusMsg"></div>
+
+  <div class="footer-line">_<span class="cursor">▌</span></div>
+</div>
+
+<script>
+(function() {
+  const STORAGE_KEY = 'cyber_todo_list';
+
+  const todoInput   = document.getElementById('todoInput');
+  const addBtn      = document.getElementById('addBtn');
+  const todoList    = document.getElementById('todoList');
+  const todoCount   = document.getElementById('todoCount');
+  const statsDisplay = document.getElementById('statsDisplay');
+  const statusMsg   = document.getElementById('statusMsg');
+
+  // ---------- 数据操作 ----------
+  function getTodos() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveTodos(list) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+  }
+
+  function addTodo(text) {
+    const list = getTodos();
+    list.push({
+      id: Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      text: text.trim(),
+      done: false,
+      createdAt: Date.now()
+    });
+    saveTodos(list);
+    return list;
+  }
+
+  function toggleTodo(id) {
+    const list = getTodos();
+    for (let i = 0; i < list.length; i++) {
+      if (list[i].id === id) {
+        list[i].done = !list[i].done;
+        break;
+      }
+    }
+    saveTodos(list);
+    return list;
+  }
+
+  function deleteTodo(id) {
+    let list = getTodos();
+    list = list.filter(function(t) { return t.id !== id; });
+    saveTodos(list);
+    return list;
+  }
+
+  // ---------- 渲染 ----------
+  function render() {
+    const list = getTodos();
+    const total = list.length;
+    const doneCount = list.filter(function(t) { return t.done; }).length;
+    const pending = total - doneCount;
+
+    statsDisplay.textContent = '[ ' + doneCount + ' / ' + total + ' ]';
+    todoCount.textContent = '待办项: ' + pending + ' 未完成 / ' + total + ' 总计';
+
+    todoList.innerHTML = '';
+
+    if (total === 0) {
+      const li = document.createElement('li');
+      li.className = 'empty-msg';
+      li.textContent = '还没有待办，添加一条吧';
+      todoList.appendChild(li);
+      return;
+    }
+
+    // 未完成在前，已完成在后，各自按创建时间倒序
+    const pendingList = list.filter(function(t) { return !t.done; });
+    const doneList    = list.filter(function(t) { return t.done; });
+
+    pendingList.sort(function(a, b) { return b.createdAt - a.createdAt; });
+    doneList.sort(function(a, b) { return b.createdAt - a.createdAt; });
+
+    const sorted = pendingList.concat(doneList);
+
+    for (let i = 0; i < sorted.length; i++) {
+      const item = sorted[i];
+
+      const li = document.createElement('li');
+      li.className = 'todo-item';
+      if (item.done) li.classList.add('completed');
+
+      // checkbox
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.className = 'todo-check';
+      cb.checked = item.done;
+      cb.setAttribute('data-id', item.id);
+      cb.addEventListener('change', function() {
+        const updated = toggleTodo(item.id);
+        render();
+        statusMsg.textContent = '> ' + (item.done ? '取消完成' : '已完成') + ': ' + item.text;
+        setTimeout(function() { statusMsg.textContent = ''; }, 2000);
+      });
+
+      // text
+      const span = document.createElement('span');
+      span.className = 'todo-text';
+      span.textContent = item.text;
+
+      // delete btn
+      const delBtn = document.createElement('button');
+      delBtn.className = 'todo-delete';
+      delBtn.textContent = '[×]';
+      delBtn.setAttribute('data-id', item.id);
+      delBtn.addEventListener('click', function() {
+        const deleted = deleteTodo(item.id);
+        render();
+        statusMsg.textContent = '> 已删除: ' + item.text;
+        setTimeout(function() { statusMsg.textContent = ''; }, 2000);
+      });
+
+      li.appendChild(cb);
+      li.appendChild(span);
+      li.appendChild(delBtn);
+      todoList.appendChild(li);
+    }
+  }
+
+  // ---------- 添加事件 ----------
+  addBtn.addEventListener('click', function() {
+    const raw = todoInput.value.trim();
+    if (raw === '') {
+      statusMsg.textContent = '> ERROR: 内容不能为空';
+      setTimeout(function() { statusMsg.textContent = ''; }, 2000);
+      return;
+    }
+
+    addTodo(raw);
+    render();
+    todoInput.value = '';
+    todoInput.focus();
+    statusMsg.textContent = '> OK: "' + raw + '" 已添加';
+    setTimeout(function() { statusMsg.textContent = ''; }, 2000);
+  });
+
+  todoInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      addBtn.click();
+    }
+  });
+
+  // ---------- 初始化 ----------
+  render();
+})();
+</script>
+</body>
+</html>
