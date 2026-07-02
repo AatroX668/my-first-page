@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>蜡笔小新 · 桌宠</title>
+<style>
+/* ============================================================
+   基础重置 & 布局
+   ============================================================ */
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  user-select: none;
+}
+
+/* ============================================================
+   毛玻璃容器 — 右下角定位
+   ============================================================ */
+#pet {
+  position: fixed;
+  right: 30px;
+  bottom: 30px;
+  z-index: 99999;
+  /* 毛玻璃背景 */
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+  padding: 12px;
+  /* 默认不显示标题栏，仅毛玻璃容器 */
+}
+
+#character-wrapper {
+  position: relative;
+  width: 260px;
+  height: 390px;
+  transition: transform 0.08s ease-out;
+  /* 跳跃 / 旋转 / 摇晃的变换目标 */
+  transform-origin: center bottom;
+}
+
+/* ============================================================
+   Canvas
+   ============================================================ */
+#shinchan {
+  display: block;
+  width: 260px;
+  height: 390px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   对话框（台词气泡）
+   ============================================================ */
+#speech-bubble {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  transform-origin: bottom center;
+  background: #fff;
+  border: 3px solid #333;
+  border-radius: 18px;
+  padding: 12px 20px;
+  min-width: 100px;
+  max-width: 220px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #d32f2f;
+  white-space: nowrap;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: none;
+  pointer-events: none;
+  z-index: 10;
+}
+#speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 14px solid #fff;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1));
+}
+#speech-bubble.show {
+  animation: bubbleIn 0.35s cubic-bezier(0.34,1.56,0.64,1) forwards;
+}
+@keyframes bubbleIn {
+  0%   { transform: translateX(-50%) scale(0); opacity:0; }
+  70%  { transform: translateX(-50%) scale(1.12); opacity:1; }
+  100% { transform: translateX(-50%) scale(1); opacity:1; }
+}
+
+/* ============================================================
+   Zzz 气泡
+   ============================================================ */
+#zzz-container {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+  display: none;
+}
+#zzz-container.show { display: block; }
+
+.zzz {
+  position: absolute;
+  font-size: 20px;
+  font-weight: bold;
+  color: #3E2723;
+  opacity: 0;
+  white-space: nowrap;
+}
+.zzz.z1 {
+  animation: zzzFloat1 2.4s ease-in-out infinite;
+  left: -10px;
+  top: 0;
+}
+.zzz.z2 {
+  animation: zzzFloat2 2.4s ease-in-out 0.4s infinite;
+  left: 10px;
+  top: -18px;
+  font-size: 26px;
+}
+.zzz.z3 {
+  animation: zzzFloat3 2.4s ease-in-out 0.8s infinite;
+  left: 30px;
+  top: -40px;
+  font-size: 32px;
+}
+
+@keyframes zzzFloat1 {
+  0%   { opacity:0; transform: translate(0,0)  scale(0.6); }
+  20%  { opacity:1; transform: translate(5px,-8px)  scale(0.8); }
+  80%  { opacity:1; transform: translate(-5px,-24px) scale(0.9); }
+  100% { opacity:0; transform: translate(0,-36px) scale(1); }
+}
+@keyframes zzzFloat2 {
+  0%   { opacity:0; transform: translate(0,0)  scale(0.7); }
+  20%  { opacity:1; transform: translate(-8px,-10px) scale(0.9); }
+  80%  { opacity:1; transform: translate(8px,-28px) scale(1.0); }
+  100% { opacity:0; transform: translate(0,-42px) scale(1.2); }
+}
+@keyframes zzzFloat3 {
+  0%   { opacity:0; transform: translate(0,0)  scale(0.8); }
+  20%  { opacity:1; transform: translate(6px,-12px) scale(1.0); }
+  80%  { opacity:1; transform: translate(-6px,-32px) scale(1.1); }
+  100% { opacity:0; transform: translate(0,-46px) scale(1.3); }
+}
+
+/* ============================================================
+   「好晕哦～」文字
+   ============================================================ */
+#dizzy-text {
+  position: absolute;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  font-size: 28px;
+  font-weight: bold;
+  color: #d32f2f;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  pointer-events: none;
+  z-index: 10;
+  white-space: nowrap;
+  display: none;
+}
+#dizzy-text.show {
+  display: block;
+  animation: dizzyIn 0.3s ease-out forwards, dizzyShake 0.5s ease-in-out 0.3s infinite;
+}
+@keyframes dizzyIn {
+  0%   { transform: translateX(-50%) scale(0) rotate(0deg); opacity:0; }
+  100% { transform: translateX(-50%) scale(1) rotate(360deg); opacity:1; }
+}
+@keyframes dizzyShake {
+  0%, 100% { transform: translateX(-50%) rotate(-3deg); }
+  50%      { transform: translateX(-50%) rotate(3deg); }
+}
+
+
+  0%   { transform: translateX(-50%) scaleY(0.3) scaleX(0.6); opacity:0.3; }
+  20%  { transform: translateX(-50%) scaleY(0.8) scaleX(1);   opacity:0.7; }
+  45%  { transform: translateX(calc(-50% + 2px)) scaleY(1.2) scaleX(0.9); opacity:0.8; }
+  60%  { transform: translateX(calc(-50% - 1px)) scaleY(2.0) scaleX(0.7); opacity:0.6; }
+  75%  { transform: translateX(calc(-50% + 1px)) scaleY(2.6) scaleX(0.5); opacity:0.4; }
+  90%  { transform: translateX(calc(-50% - 2px)) scaleY(3.0) scaleX(0.4); opacity:0.2; }
+  100% { transform: translateX(calc(-50% + 2px)) scaleY(3.2) scaleX(0.3); opacity:0; }
+}
+
+/* ============================================================
+   脸红效果（覆盖层）
+   ============================================================ */
+#blush-overlay {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 0;
+  pointer-events: none;
+  z-index: 3;
+  display: none;
+}
+#blush-overlay.show {
+  display: block;
+  animation: blushFade 0.8s ease-out forwards;
+}
+@keyframes blushFade {
+  0%   { background: radial-gradient(ellipse at 42% 50%, rgba(255,80,80,0.25) 0%, transparent 50%),
+                  radial-gradient(ellipse at 58% 50%, rgba(255,80,80,0.25) 0%, transparent 50%); }
+  60%  { background: radial-gradient(ellipse at 40% 50%, rgba(255,50,50,0.35) 0%, transparent 50%),
+                  radial-gradient(ellipse at 60% 50%, rgba(255,50,50,0.35) 0%, transparent 50%); }
+  100% { background: radial-gradient(ellipse at 42% 50%, rgba(255,80,80,0) 0%, transparent 50%),
+                  radial-gradient(ellipse at 58% 50%, rgba(255,80,80,0) 0%, transparent 50%); }
+}
+</style>
+</head>
+<body>
+
+<!---------- HTML 结构 ---------->
+<div id="pet">
+  <div id="character-wrapper">
+    <!-- 对话框 -->
+    <div id="speech-bubble"><span id="speech-text"></span></div>
+    <!-- Zzz -->
+    <div id="zzz-container">
+      <span class="zzz z1">z</span>
+      <span class="zzz z2">Z</span>
+      <span class="zzz z3">Z</span>
+    </div>
+    <!-- 晕字 -->
+    <div id="dizzy-text">好晕哦～</div>
+    <!-- 脸红覆盖 -->
+    <div id="blush-overlay"></div>
+    <!-- 画布 -->
+    <canvas id="shinchan" width="260" height="390"></canvas>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   蜡笔小新 桌宠 — 完整交互逻辑
+   ============================================================ */
+
+// ---- DOM ----
+const canvas = document.getElementById('shinchan');
+const ctx = canvas.getContext('2d');
+const wrapper = document.getElementById('character-wrapper');
+const speechBubble = document.getElementById('speech-bubble');
+const speechText  = document.getElementById('speech-text');
+const zzzContainer = document.getElementById('zzz-container');
+const dizzyText   = document.getElementById('dizzy-text');
+const blushOverlay = document.getElementById('blush-overlay');
+const petContainer = document.getElementById('pet');
+
+// ---- 常量 ----
+const CW = 260, CH = 390;
+
+// ---- 状态 ----
+const State = {
+  NORMAL:  'normal',
+  IDLE:    'idle',
+  SPINNING:'spinning',
+  JUMPING: 'jumping',
+  WIGGLING:'wiggling',
+};
+let state = State.NORMAL;
+
+// ---- 动画变量 ----
+let idleSince = 0;            // 进入闲置的时间戳
+let lastActive = Date.now();  // 上次互动时间
+let jumpStart = 0;
+let jumpDuration = 700;       // ms
+let jumpPeak = 0;
+let spinAngle = 0;
+let spinStart = 0;
+let spinDuration = 1200;
+let wiggleStart = 0;
+let wiggleDuration = 500;
+let droolLen = 0;             // 口水长度（像素）
+let blinkTimer = 0;
+let isBlinking = false;
+let idleSway = 0;
+
+// ---- 鼠标历史（滑动检测） ----
+const mouseHistory = [];
+const SLIDE_WINDOW = 400;     // ms
+const SLIDE_CHANGES = 3;      // 方向变化阈值
+const SLIDE_AMPLITUDE = 15;   // 最小移动 px
+
+// ---- 台词库 ----
+const QUOTES = [
+  '美女～',
+  '你回来了',
+  '动感超人！',
+  '不吃青椒！',
+  '小姐～',
+  '小白！',
+  '哦～原来如此',
+  '妈妈好可怕～',
+];
+
+// ---- 颜色调色板 ----
+const COLORS = {
+  skin:       '#FFD5B8',
+  skinShadow: '#E8BFA0',
+  hair:       '#1A1A1A',
+  eyebrow:    '#1A1A1A',
+  eye:        '#1A1A1A',
+  eyeWhite:   '#FFFFFF',
+  mouthInner: '#C62828',
+  tongue:     '#FF8A80',
+  cheek:      'rgba(255,140,140,0.30)',
+  cheekBlush: 'rgba(255,60,60,0.45)',
+  shirt:      '#D32F2F',
+  shirtDark:  '#B71C1C',
+  pants:      '#FFD600',
+  pantsDark:  '#F9A825',
+  shoe:       '#F5F5F5',
+  shoeDark:   '#BDBDBD',
+  outline:    '#2C1810',
+  drool:      'rgba(180,215,255,0.55)',
+};
+
+// ============================================================
+// 绘制函数
+// ============================================================
+
+/** 绘制整个角色 */
+function drawShinchan(timeSinceIdle) {
+  ctx.clearRect(0, 0, CW, CH);
+
+  // ---- 基础变换 ----
+  ctx.save();
+  // 跳跃
+  if (state === State.JUMPING) {
+    const t = (Date.now() - jumpStart) / jumpDuration;
+    const progress = Math.min(t, 1);
+    // 使用 easeOutBounce 曲线
+    const bounce = 1 - easeOutBounce(progress);
+    const jumpHeight = bounce * 120;
+    ctx.translate(0, -jumpHeight);
+    ctx.translate(0, 0);
+  }
+
+  const swayAmt = (state === State.IDLE) ? Math.sin(Date.now() / 600) * 0.025 : 0;
+
+  // ---- 身体（先画，被头盖住一部分） ----
+  drawBody(ctx);
+  // ---- 腿 & 鞋 ----
+  drawLegs(ctx);
+  // ---- 头 ----
+  drawHead(ctx, timeSinceIdle);
+
+  ctx.restore();
+}
+
+// ==================== 头部 ====================
+
+function drawHead(ctx, timeSinceIdle) {
+  const cx = 130, cy = 120;
+  const rx = 88, ry = 80;
+  const isSleepy = state === State.IDLE;
+
+  // --- 头发 ---
+  ctx.fillStyle = COLORS.hair;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy - ry + 16, rx - 6, 22, 0, Math.PI, 0);
+  ctx.fill();
+  // 头顶几根翘发
+  const spikes = [
+    [cx-25, cy-ry+8,  -0.2],
+    [cx-8,  cy-ry+2,   0.0],
+    [cx+12, cy-ry+4,   0.15],
+    [cx+30, cy-ry+12,  0.3],
+  ];
+  for (const [sx, sy, ang] of spikes) {
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(ang);
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(5, -20);
+    ctx.lineTo(-4, -18);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // --- 头型（大圆脸） ---
+  ctx.fillStyle = COLORS.skin;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // --- 耳朵 ---
+  ctx.fillStyle = COLORS.skin;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+  // 左耳
+  ctx.beginPath();
+  ctx.ellipse(cx - rx + 4, cy - 5, 14, 18, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // 右耳
+  ctx.beginPath();
+  ctx.ellipse(cx + rx - 4, cy - 5, 14, 18, 0.2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+
+  // --- 眉毛（标志性粗黑椭圆眉） ---
+  ctx.fillStyle = COLORS.eyebrow;
+  // 左眉：略倾斜，内低外高
+  ctx.save();
+  ctx.translate(80, cy - 34);
+  ctx.rotate(-0.06);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 19, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  // 右眉
+  ctx.save();
+  ctx.translate(180, cy - 34);
+  ctx.rotate(0.06);
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 19, 7, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // --- 眼睛 ---
+  const isSpinning = state === State.SPINNING;
+  const eyeY = cy - 12;
+
+  if (isSpinning) {
+    // 螺旋眼
+    drawSpiralEye(ctx, 88, eyeY);
+    drawSpiralEye(ctx, 172, eyeY);
+  } else if (isSleepy) {
+    // 闭眼（半闭）
+    ctx.strokeStyle = COLORS.eyebrow;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(78, eyeY);
+    ctx.lineTo(98, eyeY);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(162, eyeY);
+    ctx.lineTo(182, eyeY);
+    ctx.stroke();
+  } else {
+    // 小黑豆眼
+    if (isBlinking) {
+      ctx.strokeStyle = COLORS.eyebrow;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(82, eyeY); ctx.lineTo(94, eyeY); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(166, eyeY); ctx.lineTo(178, eyeY); ctx.stroke();
+    } else {
+      ctx.fillStyle = COLORS.eye;
+      ctx.beginPath(); ctx.arc(88, eyeY, 5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(172, eyeY, 5, 0, Math.PI * 2); ctx.fill();
+      // 高光
+      ctx.fillStyle = '#FFF';
+      ctx.beginPath(); ctx.arc(86, eyeY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(170, eyeY - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  // --- 腮红 ---
+  const blushAlpha = (state === State.WIGGLING) ? 0.40 : 0.28;
+  ctx.fillStyle = `rgba(255,140,140,${blushAlpha})`;
+  ctx.beginPath(); ctx.ellipse(68, cy + 8, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(192, cy + 8, 14, 10, 0, 0, Math.PI * 2); ctx.fill();
+
+  // --- 嘴巴 ---
+  if (isSleepy) {
+    // 睡觉：微微张嘴，流口水
+    ctx.fillStyle = COLORS.mouthInner;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 26, 14, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // 口水
+    drawDrool(ctx, cx, cy + 34, timeSinceIdle);
+  } else if (isSpinning) {
+    // 旋转：张嘴（惊讶）
+    ctx.fillStyle = COLORS.mouthInner;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 28, 20, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = COLORS.tongue;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 34, 12, 8, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.strokeStyle = COLORS.outline;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  } else {
+    // 经典大笑
+    drawBigSmile(ctx, cx, cy);
+  }
+}
+
+/** 标志性裂开大笑 */
+function drawBigSmile(ctx, cx, cy) {
+  const isJumping = state === State.JUMPING;
+  const mouthScale = isJumping ? 1.15 : 1.0;
+
+  ctx.save();
+  ctx.translate(cx, cy + 22);
+  ctx.scale(mouthScale, mouthScale);
+  ctx.translate(-cx, -(cy + 22));
+
+  // 张嘴（红色内部）
+  ctx.fillStyle = COLORS.mouthInner;
+  ctx.beginPath();
+  ctx.moveTo(cx - 40, cy + 14);
+  ctx.quadraticCurveTo(cx - 15, cy + 44, cx, cy + 40);
+  ctx.quadraticCurveTo(cx + 15, cy + 44, cx + 40, cy + 14);
+  ctx.quadraticCurveTo(cx + 20, cy + 18, cx, cy + 16);
+  ctx.quadraticCurveTo(cx - 20, cy + 18, cx - 40, cy + 14);
+  ctx.fill();
+
+  // 嘴角轮廓
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(cx - 42, cy + 14);
+  ctx.quadraticCurveTo(cx - 15, cy + 46, cx, cy + 42);
+  ctx.quadraticCurveTo(cx + 15, cy + 46, cx + 42, cy + 14);
+  ctx.stroke();
+
+  // 舌头
+  ctx.fillStyle = COLORS.tongue;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + 34, 14, 8, 0, 0, Math.PI);
+  ctx.fill();
+
+  // 小舌头高光
+  ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  ctx.beginPath();
+  ctx.ellipse(cx - 4, cy + 34, 5, 3, 0, 0, Math.PI);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/** 螺旋眼 */
+function drawSpiralEye(ctx, x, y) {
+  const maxR = 8;
+  // 白色底
+  ctx.fillStyle = '#FFFFFF';
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(x, y, maxR + 1, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // 螺旋条纹
+  for (let i = 0; i < 4; i++) {
+    const r = maxR * (1 - i / 4);
+    ctx.fillStyle = (i % 2 === 0) ? COLORS.eye : '#FFFFFF';
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // 交叉十字线（旋转感）
+  const angle = spinAngle;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+  ctx.strokeStyle = COLORS.eye;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(-maxR, 0); ctx.lineTo(maxR, 0);
+  ctx.moveTo(0, -maxR); ctx.lineTo(0, maxR);
+  ctx.stroke();
+  ctx.restore();
+}
+
+/** 口水 */
+function drawDrool(ctx, cx, cy, timeSinceIdle) {
+  // 口水随时间延长变长
+  const t = (Date.now() - idleSince) / 1000;
+  const dripPhase = (t % 3) / 3; // 0~1 循环
+  const len = 8 + dripPhase * 35;
+
+  ctx.fillStyle = COLORS.drool;
+  ctx.strokeStyle = 'rgba(150,195,240,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(cx - 3, cy);
+  ctx.quadraticCurveTo(cx - 5, cy + len * 0.5, cx - 2, cy + len);
+  ctx.quadraticCurveTo(cx + 2, cy + len, cx + 3, cy + len * 0.5);
+  ctx.quadraticCurveTo(cx + 5, cy + len * 0.3, cx + 3, cy);
+  ctx.fill();
+  // 水滴末端
+  ctx.beginPath();
+  ctx.ellipse(cx, cy + len, 4, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// ==================== 身体 ====================
+
+function drawBody(ctx) {
+  const cx = 130;
+
+  // --- 脖子 ---
+  ctx.fillStyle = COLORS.skin;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.rect(cx - 16, 195, 32, 14);
+  ctx.fill();
+  ctx.stroke();
+
+  // --- 红色上衣 ---
+  ctx.fillStyle = COLORS.shirt;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  // 衣身
+  ctx.beginPath();
+  ctx.roundRect(cx - 55, 206, 110, 72, 14);
+  ctx.fill();
+  ctx.stroke();
+
+  // 衣领（V 领）
+  ctx.strokeStyle = COLORS.shirtDark;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(cx - 14, 206);
+  ctx.lineTo(cx, 228);
+  ctx.lineTo(cx + 14, 206);
+  ctx.stroke();
+
+  // --- 手臂 ---
+  ctx.fillStyle = COLORS.skin;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+
+  // 左臂
+  ctx.save();
+  ctx.translate(cx - 55, 218);
+  ctx.rotate(0.2);
+  ctx.beginPath();
+  ctx.ellipse(0, 12, 12, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // 右臂
+  ctx.save();
+  ctx.translate(cx + 55, 218);
+  ctx.rotate(-0.2);
+  ctx.beginPath();
+  ctx.ellipse(0, 12, 12, 22, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  ctx.restore();
+
+  // --- 黄色裤子 ---
+  ctx.fillStyle = COLORS.pants;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.roundRect(cx - 45, 274, 90, 38, 8);
+  ctx.fill();
+  ctx.stroke();
+
+  // 裤缝线
+  ctx.strokeStyle = COLORS.pantsDark;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(cx, 274);
+  ctx.lineTo(cx, 312);
+  ctx.stroke();
+}
+
+// ==================== 腿 & 鞋 ====================
+
+function drawLegs(ctx) {
+  const cx = 130;
+
+  // --- 腿 ---
+  ctx.fillStyle = COLORS.skin;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2;
+
+  // 左腿
+  ctx.beginPath();
+  ctx.roundRect(cx - 30, 308, 22, 20, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  // 右腿
+  ctx.beginPath();
+  ctx.roundRect(cx + 8, 308, 22, 20, 4);
+  ctx.fill();
+  ctx.stroke();
+
+  // --- 鞋子 ---
+  ctx.fillStyle = COLORS.shoe;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  // 左鞋
+  ctx.beginPath();
+  ctx.ellipse(cx - 19, 331, 18, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // 鞋底
+  ctx.fillStyle = COLORS.shoeDark;
+  ctx.beginPath();
+  ctx.ellipse(cx - 19, 334, 15, 4, 0, 0, Math.PI);
+  ctx.fill();
+
+  // 右鞋
+  ctx.fillStyle = COLORS.shoe;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.ellipse(cx + 19, 331, 18, 9, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.stroke();
+  // 鞋底
+  ctx.fillStyle = COLORS.shoeDark;
+  ctx.beginPath();
+  ctx.ellipse(cx + 19, 334, 15, 4, 0, 0, Math.PI);
+  ctx.fill();
+}
+
+// ==================== 缓动函数 ====================
+
+function easeOutBounce(t) {
+  const n1 = 7.5625, d1 = 2.75;
+  if (t < 1 / d1)       return n1 * t * t;
+  else if (t < 2 / d1)  return n1 * (t -= 1.5 / d1) * t + 0.75;
+  else if (t < 2.5 / d1) return n1 * (t -= 2.25 / d1) * t + 0.9375;
+  else                   return n1 * (t -= 2.625 / d1) * t + 0.984375;
+}
+
+// ============================================================
+// 交互逻辑
+// ============================================================
+
+// ---- 重置闲置 ----
+function resetIdle() {
+  lastActive = Date.now();
+  if (state === State.IDLE) {
+    exitIdle();
+  }
+  // 闲置检测由 animationLoop 的定时检查处理
+}
+
+function enterIdle() {
+  if (state !== State.NORMAL) return;
+  state = State.IDLE;
+  idleSince = Date.now();
+  zzzContainer.classList.add('show');
+}
+
+function exitIdle() {
+  if (state !== State.IDLE) return;
+  state = State.NORMAL;
+  zzzContainer.classList.remove('show');
+}
+
+// ---- 鼠标滑动检测 ----
+function recordMouseMove(x) {
+  const now = Date.now();
+  mouseHistory.push({ x, t: now });
+  // 清理旧记录
+  while (mouseHistory.length > 0 && mouseHistory[0].t < now - SLIDE_WINDOW) {
+    mouseHistory.shift();
+  }
+  if (mouseHistory.length < 6) return;
+
+  // 检测方向变化
+  const recent = mouseHistory;
+  let dirs = [];
+  for (let i = 1; i < recent.length; i++) {
+    const dx = recent[i].x - recent[i-1].x;
+    if (Math.abs(dx) > SLIDE_AMPLITUDE / 2) {
+      dirs.push(dx > 0 ? 1 : -1);
+    }
+  }
+  let changes = 0;
+  for (let i = 1; i < dirs.length; i++) {
+    if (dirs[i] !== dirs[i-1]) changes++;
+  }
+  if (changes >= SLIDE_CHANGES && state === State.NORMAL) {
+    startSpin();
+  }
+}
+
+// ---- 旋转 ----
+function startSpin() {
+  state = State.SPINNING;
+  spinStart = Date.now();
+  spinAngle = 0;
+  dizzyText.classList.add('show');
+  // Spin 变换在 animationLoop 中通过 CSS 实现
+}
+
+function endSpin() {
+  if (state !== State.SPINNING) return;
+  state = State.NORMAL;
+  dizzyText.classList.remove('show');
+  wrapper.style.transform = '';
+}
+
+// ---- 跳跃 ----
+function startJump() {
+  if (state === State.JUMPING) return; // 已在跳
+
+  // 退出其他状态
+  if (state === State.IDLE) exitIdle();
+  if (state === State.SPINNING) endSpin();
+  if (state === State.WIGGLING) endWiggle();
+
+  state = State.JUMPING;
+  jumpStart = Date.now();
+
+  // 随机台词
+  const quote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  speechText.textContent = quote;
+  speechBubble.classList.remove('show');
+  // 强制 reflow
+  void speechBubble.offsetWidth;
+  speechBubble.classList.add('show');
+}
+
+function endJump() {
+  if (state !== State.JUMPING) return;
+  state = State.NORMAL;
+  speechBubble.classList.remove('show');
+  wrapper.style.transform = '';
+}
+
+// ---- 扭屁股 ----
+function startWiggle() {
+  if (state === State.JUMPING || state === State.SPINNING) return;
+  if (state === State.IDLE) exitIdle();
+
+  state = State.WIGGLING;
+  wiggleStart = Date.now();
+  blushOverlay.classList.remove('show');
+  void blushOverlay.offsetWidth;
+  blushOverlay.classList.add('show');
+}
+
+function endWiggle() {
+  if (state !== State.WIGGLING) return;
+  state = State.NORMAL;
+  blushOverlay.classList.remove('show');
+  wrapper.style.transform = '';
+}
+
+// ---- 眨眼随机 ----
+function triggerBlink() {
+  if (state === State.IDLE || state === State.SPINNING) return;
+  isBlinking = true;
+  setTimeout(() => { isBlinking = false; }, 120);
+}
+
+// ============================================================
+// 动画循环 (requestAnimationFrame)
+// ============================================================
+
+let lastFrame = 0;
+
+function animationLoop(timestamp) {
+  const now = Date.now();
+
+  // ---- 闲置检测 ----
+  const idleTime = now - lastActive;
+  if (idleTime > 4000 && state === State.NORMAL) {
+    enterIdle();
+  }
+
+  // ---- 旋转动画 ----
+  if (state === State.SPINNING) {
+    const t = (now - spinStart) / spinDuration;
+    spinAngle += 0.2;
+    // 通过 CSS transform 旋转
+    wrapper.style.transform = `rotate(${Math.sin(now / 30) * 20}deg)`;
+    // 3s 后自动恢复
+    if (t > 3.0) {
+      endSpin();
+    }
+  }
+
+  // ---- 跳跃动画 ----
+  if (state === State.JUMPING) {
+    const t = (now - jumpStart) / jumpDuration;
+    if (t >= 1.0) {
+      endJump();
+    } else {
+      const bounce = 1 - easeOutBounce(Math.min(t, 1));
+      const h = bounce * 130;
+      wrapper.style.transform = `translateY(-${h}px)`;
+    }
+  }
+
+  // ---- 扭屁股 ----
+  if (state === State.WIGGLING) {
+    const t = (now - wiggleStart) / wiggleDuration;
+    if (t >= 1.5) {
+      endWiggle();
+    } else {
+      const angle = Math.sin(now / 50) * 8;
+      wrapper.style.transform = `rotate(${angle}deg)`;
+    }
+  }
+
+  // ---- 闲置摇晃（CSS 已包含，这里做 canvas 内的微晃） ----
+  if (state === State.IDLE) {
+    // 轻微左右摇摆通过画布绘制时的 swayAmt 处理
+  }
+
+  // ---- 随机眨眼（每 3~5 秒） ----
+  if (now - lastFrame > 2500 + Math.random() * 2000) {
+    if (state === State.NORMAL) triggerBlink();
+    lastFrame = now;
+  }
+
+  // ---- 绘制 ----
+  const timeSinceIdle = state === State.IDLE ? (now - idleSince) : 0;
+  drawShinchan(timeSinceIdle);
+
+  requestAnimationFrame(animationLoop);
+}
+
+// ============================================================
+// 事件绑定
+// ============================================================
+
+// ---- 鼠标移动：重置闲置 + 滑动检测 ----
+document.addEventListener('mousemove', (e) => {
+  if (state !== State.JUMPING && state !== State.WIGGLING) {
+    recordMouseMove(e.clientX);
+  }
+  resetIdle();
+});
+
+// ---- 键盘：跳跃 ----
+document.addEventListener('keydown', (e) => {
+  // 不拦截系统键
+  if (e.key === 'F5' || e.key === 'F12' || e.ctrlKey || e.metaKey) return;
+  e.preventDefault();
+  startJump();
+  resetIdle();
+});
+
+// ---- 点击小新：扭屁股 ----
+canvas.addEventListener('click', (e) => {
+  e.stopPropagation();
+  startWiggle();
+  resetIdle();
+});
+
+// ---- 任意点击背景也重置闲置 ----
+document.addEventListener('click', () => {
+  if (state === State.IDLE) resetIdle();
+});
+
+// ---- 窗口大小变化保持右下角（CSS fixed 已处理好） ----
+
+// ---- 额外：鼠标从 html 移走时防止卡闲置 ----
+document.addEventListener('mouseleave', () => {
+  // nothing special
+});
+
+// ============================================================
+// 启动
+// ============================================================
+
+// polyfill roundRect if needed
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = [r];
+    const radii = r.map(v => Math.min(v, Math.min(w, h) / 2));
+    const [tl, tr = tl, br = tl, bl = tr] = radii;
+    this.moveTo(x + tl, y);
+    this.lineTo(x + w - tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + tr);
+    this.lineTo(x + w, y + h - br);
+    this.quadraticCurveTo(x + w, y + h, x + w - br, y + h);
+    this.lineTo(x + bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - bl);
+    this.lineTo(x, y + tl);
+    this.quadraticCurveTo(x, y, x + tl, y);
+    this.closePath();
+    return this;
+  };
+}
+
+lastFrame = Date.now();
+requestAnimationFrame(animationLoop);
+</script>
+</body>
+</html>
